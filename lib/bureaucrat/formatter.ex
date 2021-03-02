@@ -24,7 +24,7 @@ defmodule Bureaucrat.Formatter do
     grouped =
       records
       |> Enum.sort_by(&sort_item_for/1)
-      |> group_by_path
+      |> group_by_path()
 
     Enum.map(grouped, fn {path, recs} ->
       apply(writer, :write, [recs, path])

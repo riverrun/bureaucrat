@@ -69,12 +69,11 @@ defmodule Bureaucrat.SwaggerSlateMarkdownWriter do
   This corresponds to the securityDefinitions section of the swagger document.
   """
   def write_authentication(file, %{"security" => security} = swagger) do
-    file
-    |> puts("# Authentication\n")
+    puts(file, "# Authentication\n")
 
     # TODO: Document token based security
     Enum.each(security, fn securityRequirement ->
-      name = Map.keys(securityRequirement) |> List.first()
+      name = securityRequirement |> Map.keys() |> List.first()
       definition = swagger["securityDefinitions"][name]
 
       file
@@ -140,10 +139,7 @@ defmodule Bureaucrat.SwaggerSlateMarkdownWriter do
   prefix is output before each property name to enable nested objects to be flattened.
   """
   def write_model_properties(file, swagger, model_schema, prefix \\ "") do
-    {objects, primitives} =
-      model_schema["properties"]
-      |> Enum.split_with(fn {_key, schema} -> schema["type"] == "object" end)
-
+    {objects, primitives} = Enum.split_with(model_schema["properties"], fn {_key, schema} -> schema["type"] == "object" end)
     ordered = Enum.concat(primitives, objects)
 
     Enum.each(ordered, fn {property, property_details} ->
@@ -233,7 +229,7 @@ defmodule Bureaucrat.SwaggerSlateMarkdownWriter do
   records_by_operation_id are the examples collected during tests, grouped by operationId (Controller.action)
   """
   def write_operations_for_tag(file, tag, records_by_operation_id, swagger) do
-    tag_details = swagger["tags"] |> Enum.find(&(&1["name"] == tag))
+    tag_details = Enum.find(swagger["tags"], &(&1["name"] == tag))
 
     file
     |> puts("# #{tag}\n")
@@ -267,7 +263,8 @@ defmodule Bureaucrat.SwaggerSlateMarkdownWriter do
   Find the details of an API operation in swagger by operationId
   """
   def find_operation_by_id(swagger, operation_id) do
-    Enum.flat_map(swagger["paths"], fn {path, actions} ->
+    swagger["paths"]
+    |> Enum.flat_map(fn {path, actions} ->
       Enum.map(actions, fn {action, details} ->
         details
         |> Map.put("action", action)
@@ -378,8 +375,7 @@ defmodule Bureaucrat.SwaggerSlateMarkdownWriter do
     end
 
     # Response with status and headers
-    file
-    |> puts("> Response\n")
+    puts(file, "> Response\n")
 
     if plaintext do
       file

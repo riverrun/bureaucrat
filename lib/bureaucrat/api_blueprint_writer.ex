@@ -11,8 +11,8 @@ defmodule Bureaucrat.ApiBlueprintWriter do
 
   defp write_api_doc(records, file) do
     Enum.each(records, fn {controller, actions} ->
-      %{request_path: path} = Enum.at(actions, 0) |> elem(1) |> List.first()
-      puts(file, "\n# Group #{controller}")
+      %{assigns: assigns, request_path: path} = Enum.at(actions, 0) |> elem(1) |> List.first()
+      puts(file, "\n# Group #{assigns.bureaucrat_opts[:group_title] || controller}")
       puts(file, "## #{controller} [#{path}]")
 
       Enum.each(actions, fn {action, records} ->
@@ -28,8 +28,7 @@ defmodule Bureaucrat.ApiBlueprintWriter do
     record_request = Enum.at(records, 0)
     method = record_request.method
 
-    file |> puts("### #{test_description} [#{method} #{anchor(record_request)}]")
-
+    puts(file, "### #{test_description} [#{method} #{anchor(record_request)}]")
     write_parameters(record_request.path_params, file)
 
     records
@@ -37,10 +36,10 @@ defmodule Bureaucrat.ApiBlueprintWriter do
     |> Enum.each(&write_example(&1, file))
   end
 
-  defp write_parameters(_path_params = %{}, _file), do: nil
+  defp write_parameters(path_params, _file) when map_size(path_params) == 0, do: nil
 
   defp write_parameters(path_params, file) do
-    file |> puts("\n+ Parameters\n#{formatted_params(path_params)}")
+    puts(file, "\n+ Parameters\n#{formatted_params(path_params)}")
 
     Enum.each(path_params, fn {param, value} ->
       puts(file, indent_lines(12, "#{param}: #{value}"))
@@ -50,7 +49,7 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   defp sort_by_status_code(records) do
-    records |> Enum.sort_by(& &1.status)
+    Enum.sort_by(records, & &1.status)
   end
 
   defp write_example(record, file) do
@@ -79,7 +78,7 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   defp write_headers(_headers = [], _file), do: nil
 
   defp write_headers(headers, file) do
-    file |> puts(indent_lines(4, "+ Headers\n"))
+    puts(file, indent_lines(4, "+ Headers\n"))
 
     Enum.each(headers, fn {header, value} ->
       puts(file, indent_lines(12, "#{header}: #{value}"))
@@ -101,12 +100,12 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   defp write_response(record, file) do
-    file |> puts("\n+ Response #{record.status}\n")
+    puts(file, "\n+ Response #{record.status}\n")
     write_headers(record.resp_headers, file)
     write_response_body(record.resp_body, file)
   end
 
-  defp write_response_body(_params = %{}, _file), do: nil
+  defp write_response_body(params, _file) when map_size(params) == 0, do: nil
 
   defp write_response_body(params, file) do
     file
@@ -130,13 +129,14 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   def indent_lines(number_of_spaces, string) do
-    String.split(string, "\n")
+    string
+    |> String.split("\n")
     |> Enum.map(fn a -> String.pad_leading("", number_of_spaces) <> a end)
     |> Enum.join("\n")
   end
 
   def formatted_params(uri_params) do
-    Enum.map(uri_params, &format_param/1) |> Enum.join("\n")
+    uri_params |> Enum.map(&format_param/1) |> Enum.join("\n")
   end
 
   def format_param(param) do
@@ -144,10 +144,13 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   def anchor(record) do
-    if record.path_params == %{} do
-      record.request_path
-    else
-      ([""] ++ Enum.drop(record.path_info, -1) ++ ["{id}"]) |> Enum.join("/")
+    case map_size(record.path_params) do
+      0 ->
+        record.request_path
+
+      num ->
+        params_list = for {key, _} <- record.path_params, do: "{#{key}}"
+        Enum.join([""] ++ Enum.drop(record.path_info, -num) ++ params_list, "/")
     end
   end
 

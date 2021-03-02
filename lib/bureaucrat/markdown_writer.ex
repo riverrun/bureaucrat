@@ -171,8 +171,7 @@ defmodule Bureaucrat.MarkdownWriter do
         puts(file, "#{header}: #{value}")
       end)
 
-      file
-      |> puts("```")
+      puts(file, "```")
     end
 
     file
