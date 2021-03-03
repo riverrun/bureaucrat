@@ -38,7 +38,11 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   defp format_action(action) do
-    action |> Atom.to_string() |> String.capitalize()
+    action
+    |> Atom.to_string()
+    |> String.split("_")
+    |> Enum.map(&String.capitalize/1)
+    |> Enum.join(" ")
   end
 
   defp write_parameters(path_params, _file) when map_size(path_params) == 0, do: nil
