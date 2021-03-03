@@ -12,7 +12,8 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   defp write_api_doc(records, file) do
     Enum.each(records, fn {controller, actions} ->
       %{assigns: assigns, request_path: path} = Enum.at(actions, 0) |> elem(1) |> List.first()
-      puts(file, "\n# Group #{assigns.bureaucrat_opts[:group_title] || controller}")
+      controller = assigns.bureaucrat_opts[:group_title] || controller
+      puts(file, "\n# Group #{controller}")
       puts(file, "## #{controller} [#{path}]")
 
       Enum.each(actions, fn {action, records} ->
@@ -24,7 +25,7 @@ defmodule Bureaucrat.ApiBlueprintWriter do
   end
 
   defp write_action(action, controller, records, file) do
-    test_description = "#{controller} #{action}"
+    test_description = "#{format_action(action)} #{controller}"
     record_request = Enum.at(records, 0)
     method = record_request.method
 
@@ -34,6 +35,10 @@ defmodule Bureaucrat.ApiBlueprintWriter do
     records
     |> sort_by_status_code
     |> Enum.each(&write_example(&1, file))
+  end
+
+  defp format_action(action) do
+    action |> Atom.to_string() |> String.capitalize()
   end
 
   defp write_parameters(path_params, _file) when map_size(path_params) == 0, do: nil
